@@ -9,7 +9,7 @@ genai.configure(api_key=API_KEY)
 
 
 def generate_related_words(theme: str):
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-2.5-flash")
     prompt = f"Generate about 15 words related to the theme '{theme}' as a JSON list of strings only."
     response = model.generate_content(prompt)
     text = response.text.strip()
@@ -31,7 +31,7 @@ def generate_trivia(word: str):
     """Ask Gemini for a fun trivia fact or sentence about a word."""
     prompt = f"Give me a short trivia fact or fun sentence using the word '{word}' (max 40 words)."
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         response = model.generate_content(prompt)
         return response.text.strip()
     except Exception as e:
@@ -43,7 +43,7 @@ def generate_cluster_summary(words):
     """Summarize what words in a cluster have in common."""
     prompt = f"Summarize in 1-2 sentences what these words have in common: {', '.join(words)}"
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         response = model.generate_content(prompt)
         return response.text.strip()
     except Exception as e:
