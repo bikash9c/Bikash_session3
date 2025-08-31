@@ -8,78 +8,113 @@
 <body>
     <h1>🔎 Semantic Explorer</h1>
 
-    <form method="POST">
-        <input type="text" name="theme" placeholder="Enter a theme..." required>
+    <form id="explore-form">
+        <input type="text" id="theme" name="theme" placeholder="Enter a theme..." required>
         <button type="submit">Explore</button>
     </form>
 
-    {% if theme %}
-        <h2>Theme: {{ theme }}</h2>
+    <div id="status"></div>
+    <div id="plot"></div>
+    <div id="trivia-box"></div>
+    <div id="cluster-summaries"></div>
 
-        <!-- Status message -->
-        {% if status_msg %}
-            <p id="status-msg">{{ status_msg }}</p>
-        {% endif %}
+    <script>
+    document.getElementById("explore-form").addEventListener("submit", function(e){
+        e.preventDefault();
+        let theme = document.getElementById("theme").value;
 
-        <div id="plot"></div>
-        <div id="trivia-box"></div>
-
-        {% if cluster_summaries %}
-            <h3>Cluster Summaries</h3>
-            <ul>
-                {% for cluster in cluster_summaries %}
-                    <li><b>Cluster {{ cluster.id }}</b>: {{ cluster.summary }}</li>
-                {% endfor %}
+        // Reset status with step placeholders
+        document.getElementById("status").innerHTML = `
+            <p>⏳ Generating plot for <b>${theme}</b>...</p>
+            <ul id="steps">
+                <li id="step1">🔹 Using Gemini to generate related words</li>
+                <li id="step2">🔹 Using Gemini to create embeddings</li>
+                <li id="step3">🔹 Applying PCA for dimensionality reduction</li>
+                <li id="step4">🔹 Running KMeans clustering</li>
+                <li id="step5">🔹 Using Gemini again to summarize clusters</li>
             </ul>
-        {% endif %}
+            <p id="final-status"><i>Please wait, this may take a few seconds...</i></p>
+        `;
 
-        <script>
-            let data = {{ data_json|safe }};
+        // Simulate progress updates every 1.5s until fetch completes
+        let stepIds = ["step1","step2","step3","step4","step5"];
+        let stepIndex = 0;
+        let progressInterval = setInterval(() => {
+            if (stepIndex < stepIds.length) {
+                document.getElementById(stepIds[stepIndex]).innerHTML = 
+                    "✅ " + document.getElementById(stepIds[stepIndex]).innerText.slice(2);
+                stepIndex++;
+            } else {
+                clearInterval(progressInterval);
+            }
+        }, 1500);
 
-            // One trace with colors by cluster
-            let trace = {
-                x: data.map(d => d.x),
-                y: data.map(d => d.y),
-                mode: "markers+text",
-                type: "scatter",
-                text: data.map(d => d.word),
-                textposition: "top center",
-                marker: {
-                    size: 12,
-                    color: data.map(d => d.cluster),   // cluster as color
-                    colorscale: "Set1",
-                    showscale: true
-                },
-                hovertemplate: "<b>%{text}</b><br>Cluster: %{marker.color}<extra></extra>"
-            };
+        // Fetch data
+        fetch("/explore", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({theme: theme})
+        })
+        .then(res => res.json())
+        .then(res => {
+            clearInterval(progressInterval); // stop fake updates
 
-            let layout = {
-                title: "Semantic Map (Gemini + PCA + KMeans)",
-                xaxis: {title: "PC1"},
-                yaxis: {title: "PC2"}
-            };
-
-            Plotly.newPlot("plot", [trace], layout).then(() => {
-                // Update status message when plot is done
-                document.getElementById("status-msg").innerText = 
-                    "✅ Plot generated successfully! Hover over points to see their cluster.";
+            // Mark all as done ✅
+            stepIds.forEach(id => {
+                let el = document.getElementById(id);
+                if (el && !el.innerText.startsWith("✅")) {
+                    el.innerHTML = "✅ " + el.innerText.slice(2);
+                }
             });
 
+            // Replace only the last line
+            document.getElementById("final-status").outerHTML = `
+                <p>✅ Plot generated successfully for <b>${res.theme}</b>! 
+                Hover over points to see their cluster.<br>
+                ⏱️ Time taken: ${res.elapsed_time} seconds.</p>
+            `;
+
+            // Plot with Plotly
+            let trace = {
+                x: res.data.map(d => d.x),
+                y: res.data.map(d => d.y),
+                mode: "markers+text",
+                type: "scatter",
+                text: res.data.map(d => d.word),
+                textposition: "top center",
+                marker: {
+                    color: res.data.map(d => d.cluster),
+                    colorscale: "Viridis",
+                    showscale: true,
+                    colorbar: { title: "Cluster" }
+                }
+            };
+            Plotly.newPlot("plot", [trace], {title: "Semantic Map (Gemini + PCA + KMeans)"});
+
+            // Cluster summaries
+            let summaryHTML = "<h3>Cluster Summaries</h3><ul>";
+            res.cluster_summaries.forEach(c => {
+                summaryHTML += `<li><b>Cluster ${c.id}</b>: ${c.summary}</li>`;
+            });
+            summaryHTML += "</ul>";
+            document.getElementById("cluster-summaries").innerHTML = summaryHTML;
+
             // Trivia on click
-            document.getElementById("plot").on('plotly_click', function(data){
-                let word = data.points[0].text;
+            document.getElementById("plot").on('plotly_click', function(evt){
+                let word = evt.points[0].text;
                 fetch("/trivia", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
                     body: JSON.stringify({word: word})
                 })
-                .then(res => res.json())
-                .then(res => {
-                    document.getElementById("trivia-box").innerHTML = 
-                        "<p><b>" + word + ":</b> " + res.trivia + "</p>";
+                .then(r => r.json())
+                .then(r => {
+                    document.getElementById("trivia-box").innerHTML =
+                        `<p><b>${word}:</b> ${r.trivia}</p>`;
                 });
             });
-        </script>
-    {% endif %}
+        });
+    });
+    </script>
 </body>
 </html>
