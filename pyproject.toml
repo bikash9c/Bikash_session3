@@ -1,7 +1,19 @@
 [project]
-name = "assignment3"
+name = "semantic-explorer"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.11"
-dependencies = []
+description = "Semantic Explorer Flask app with Gemini API"
+requires-python = ">=3.9"
+
+dependencies = [
+    "flask",
+    "sentence-transformers",
+    "scikit-learn",
+    "plotly",
+    "google-generativeai",
+    "python-dotenv",
+    "pandas",
+    "numpy"
+]
+
+[tool.uv]
+# optional: you can pin Python or add constraints here
