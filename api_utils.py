@@ -43,3 +43,12 @@ def generate_cluster_summary(words):
     except Exception as e:
         print("Error generating cluster summary:", e)
         return "No summary available."
+
+def get_gemini_embeddings(words: list):
+    """Return embeddings for a list of words using Gemini embeddings API"""
+    model = "models/embedding-001"
+    embeddings = []
+    for word in words:
+        resp = genai.embed_content(model=model, content=word)
+        embeddings.append(resp["embedding"])
+    return embeddings

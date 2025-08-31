@@ -1,17 +1,18 @@
 from flask import Flask, render_template, request, jsonify
-from sentence_transformers import SentenceTransformer
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
-import plotly.express as px
 import pandas as pd
 import json
 
-from api_utils import generate_related_words, generate_trivia, generate_cluster_summary
+from api_utils import (
+    generate_related_words,
+    generate_trivia,
+    generate_cluster_summary,
+    get_gemini_embeddings  # new helper for embeddings
+)
 
 app = Flask(__name__)
 
-# Load embedding model once
-embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -24,8 +25,8 @@ def index():
         if not words:
             return render_template("index.html", error="Failed to generate related words.")
 
-        # 2. Embeddings + PCA
-        embeddings = embedder.encode(words)
+        # 2. Embeddings from Gemini + PCA
+        embeddings = get_gemini_embeddings(words)   # <-- Gemini instead of SentenceTransformer
         pca = PCA(n_components=2)
         coords = pca.fit_transform(embeddings)
 
@@ -49,8 +50,14 @@ def index():
         # 4. Prepare JSON for plot
         data_json = df.to_json(orient="records")
 
-        return render_template("index.html", words=words, data_json=data_json, clusters=clusters,
-                               cluster_summaries=cluster_summaries, theme=theme)
+        return render_template(
+            "index.html",
+            words=words,
+            data_json=data_json,
+            clusters=clusters,
+            cluster_summaries=cluster_summaries,
+            theme=theme
+        )
 
     return render_template("index.html")
 
