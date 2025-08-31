@@ -12,7 +12,7 @@ dependencies = [
     "google-generativeai",
     "python-dotenv",
     "pandas",
-    "numpy"
+    "numpy",
 ]
 
 [tool.uv]
