@@ -10,12 +10,17 @@
 
     <form method="POST">
         <input type="text" name="theme" placeholder="Enter a theme..." required>
-        <label><input type="checkbox" name="cluster"> Enable clustering</label>
         <button type="submit">Explore</button>
     </form>
 
     {% if theme %}
         <h2>Theme: {{ theme }}</h2>
+
+        <!-- Status message -->
+        {% if status_msg %}
+            <p id="status-msg">{{ status_msg }}</p>
+        {% endif %}
+
         <div id="plot"></div>
         <div id="trivia-box"></div>
 
@@ -30,19 +35,37 @@
 
         <script>
             let data = {{ data_json|safe }};
-            let words = data.map(d => d.word);
 
+            // One trace with colors by cluster
             let trace = {
                 x: data.map(d => d.x),
                 y: data.map(d => d.y),
                 mode: "markers+text",
                 type: "scatter",
-                text: words,
-                textposition: "top center"
+                text: data.map(d => d.word),
+                textposition: "top center",
+                marker: {
+                    size: 12,
+                    color: data.map(d => d.cluster),   // cluster as color
+                    colorscale: "Set1",
+                    showscale: true
+                },
+                hovertemplate: "<b>%{text}</b><br>Cluster: %{marker.color}<extra></extra>"
             };
 
-            Plotly.newPlot("plot", [trace], {title: "Semantic Map"});
+            let layout = {
+                title: "Semantic Map (Gemini + PCA + KMeans)",
+                xaxis: {title: "PC1"},
+                yaxis: {title: "PC2"}
+            };
 
+            Plotly.newPlot("plot", [trace], layout).then(() => {
+                // Update status message when plot is done
+                document.getElementById("status-msg").innerText = 
+                    "✅ Plot generated successfully! Hover over points to see their cluster.";
+            });
+
+            // Trivia on click
             document.getElementById("plot").on('plotly_click', function(data){
                 let word = data.points[0].text;
                 fetch("/trivia", {
@@ -52,7 +75,8 @@
                 })
                 .then(res => res.json())
                 .then(res => {
-                    document.getElementById("trivia-box").innerHTML = "<p><b>" + word + ":</b> " + res.trivia + "</p>";
+                    document.getElementById("trivia-box").innerHTML = 
+                        "<p><b>" + word + ":</b> " + res.trivia + "</p>";
                 });
             });
         </script>
