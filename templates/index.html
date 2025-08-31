@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Semantic Explorer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <h1>🔎 Semantic Explorer</h1>
+
+    <form method="POST">
+        <input type="text" name="theme" placeholder="Enter a theme..." required>
+        <label><input type="checkbox" name="cluster"> Enable clustering</label>
+        <button type="submit">Explore</button>
+    </form>
+
+    {% if theme %}
+        <h2>Theme: {{ theme }}</h2>
+        <div id="plot"></div>
+        <div id="trivia-box"></div>
+
+        {% if cluster_summaries %}
+            <h3>Cluster Summaries</h3>
+            <ul>
+                {% for cluster in cluster_summaries %}
+                    <li><b>Cluster {{ cluster.id }}</b>: {{ cluster.summary }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <script>
+            let data = {{ data_json|safe }};
+            let words = data.map(d => d.word);
+
+            let trace = {
+                x: data.map(d => d.x),
+                y: data.map(d => d.y),
+                mode: "markers+text",
+                type: "scatter",
+                text: words,
+                textposition: "top center"
+            };
+
+            Plotly.newPlot("plot", [trace], {title: "Semantic Map"});
+
+            document.getElementById("plot").on('plotly_click', function(data){
+                let word = data.points[0].text;
+                fetch("/trivia", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({word: word})
+                })
+                .then(res => res.json())
+                .then(res => {
+                    document.getElementById("trivia-box").innerHTML = "<p><b>" + word + ":</b> " + res.trivia + "</p>";
+                });
+            });
+        </script>
+    {% endif %}
+</body>
+</html>
